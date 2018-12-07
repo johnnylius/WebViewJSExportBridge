@@ -1,6 +1,6 @@
 //
-//  UIWebViewDemoUITests.m
-//  UIWebViewDemoUITests
+//  WebViewDemoUITests.m
+//  WebViewDemoUITests
 //
 //  Created by liuhuan on 17/2/3.
 //  Copyright © 2017年 Sogou. All rights reserved.
@@ -8,11 +8,11 @@
 
 #import <XCTest/XCTest.h>
 
-@interface UIWebViewDemoUITests : XCTestCase
+@interface WebViewDemoUITests : XCTestCase
 
 @end
 
-@implementation UIWebViewDemoUITests
+@implementation WebViewDemoUITests
 
 - (void)setUp {
     [super setUp];
