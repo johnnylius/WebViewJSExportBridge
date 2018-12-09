@@ -7,7 +7,6 @@
 //
 
 #import "RNJavaScriptManager.h"
-#import <JavaScriptCore/JavaScriptCore.h>
 #import "SGWebView.h"
 
 NSString *const WebViewCreateJavaScriptContextNotification  = @"WebViewCreateJavaScriptContextNotification";
@@ -22,7 +21,7 @@ JSExportAs(SendMessage /** newsDetailSendMessage 作为js方法的别名 */,
 
 @end
 
-@protocol TaskJavaScriptExport <SG_JSExport>
+@protocol TaskJavaScriptExport <JSExport>
 
 @required
 
@@ -53,9 +52,15 @@ JSExportAs(ykShare,
 - (NSString *)getEncryptData:(NSString *)content;
 // 1.9.6及以后版本
 - (void)showToast:(NSString *)text;
+
 - (void)testBlock:(void (^)(void))block;
-- (void)testString:(const char *)text;
+- (void)testCStr:(const char *)text;
 - (void)testClass:(Class)class;
+- (void)testNumber:(NSNumber *)number;
+- (void)testArray:(NSArray *)array;
+- (void)testDict:(NSDictionary *)dict;
+- (void)testDate:(NSDate *)date;
+- (void)testParam1:(NSString *)param1 param2:(NSString *)param2;
 
 @end
 
@@ -228,11 +233,15 @@ JSExportAs(ykShare,
 
 - (BOOL)isPushEnabled {
     __block BOOL enable = NO;
-    dispatch_sync(dispatch_get_main_queue(), ^{
-//        RNPushStateManager *manager = [[RNPushStateManager alloc] init];
-//        enable = [manager pushState];
+    if ([NSThread isMainThread]) {
         enable = YES;
-    });
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), ^{
+//            RNPushStateManager *manager = [[RNPushStateManager alloc] init];
+//            enable = [manager pushState];
+            enable = YES;
+        });
+    }
     return enable;
 }
 

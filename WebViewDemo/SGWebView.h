@@ -7,10 +7,7 @@
 //
 
 #import <WebKit/WebKit.h>
-
-@protocol SG_JSExport <NSObject>
-
-@end
+#import <JavaScriptCore/JavaScriptCore.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
