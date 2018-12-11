@@ -2,7 +2,7 @@
 //  SGWebView.m
 //  SGWebView
 //
-//  Created by Johnny on 2018/12/6.
+//  Created by liuhuan on 2018/12/6.
 //  Copyright © 2018年 Sogou. All rights reserved.
 //
 
@@ -10,90 +10,138 @@
 #import "RNJavaScriptManager.h"
 #import <objc/runtime.h>
 
+#pragma mark - SGWebViewProxy
+@interface SGWebViewProxy : NSObject <WKUIDelegate>
+
++ (instancetype)proxyWithTarget:(SGWebView *)target;
++ (instancetype)proxyWithTarget:(SGWebView *)target UIDelegate:(id<WKUIDelegate>)UIDelegate;
+
+@property (nonatomic, weak, readonly) id target;
+@property (nonatomic, weak, readonly) id<WKUIDelegate> UIDelegate;
+
+@end
+
+@implementation SGWebViewProxy
+
+- (instancetype)initWithTarget:(SGWebView *)target UIDelegate:(id<WKUIDelegate>)UIDelegate {
+    _target = target;
+    _UIDelegate = UIDelegate;
+    return self;
+}
+
++ (instancetype)proxyWithTarget:(id)target {
+    return [self proxyWithTarget:target UIDelegate:nil];
+}
+
++ (instancetype)proxyWithTarget:(id)target UIDelegate:(id<WKUIDelegate>)UIDelegate {
+    return [[SGWebViewProxy alloc] initWithTarget:target UIDelegate:UIDelegate];
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+    BOOL responds = [_target respondsToSelector:aSelector];
+    if (!responds) {
+        responds = [_UIDelegate respondsToSelector:aSelector];
+    }
+    return responds;
+}
+
+- (id)forwardingTargetForSelector:(SEL)selector {
+    if ([_target respondsToSelector:selector]) {
+        return _target;
+    } else if ([_UIDelegate respondsToSelector:selector]) {
+        return _UIDelegate;
+    }
+    return self;
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation {
+    void *null = NULL;
+    [invocation setReturnValue:&null];
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
+    return [NSObject instanceMethodSignatureForSelector:@selector(init)];
+}
+
+@end
+
+#pragma mark - SGWebView
 @interface SGWebView () <WKScriptMessageHandler, WKUIDelegate>
 
 @property (nonatomic, strong) NSMutableDictionary *selectorDict;
-@property (nonatomic, strong) NSObject *object;
+@property (nonatomic, strong) SGWebViewProxy *UIDelegateProxy;
+@property (nonatomic, weak) id<WKUIDelegate> superUIDelegate;
 
 @end
 
 @implementation SGWebView
 
-static NSString *const kCommonScript = @"\
-window.App = window.App || {};\
-window.App.checkWebkit = function () {\
-    var flag = true;\
-    var webkit = window.webkit;\
-    if (webkit == undefined) {\
-        flag = false;\
-    }\
-    return flag;\
+#define kMessageHandlerName @"SGWebView_messageHandler"
+#define kSyncGetValueMethodName @"SGWebView_syncGetValue"
+
+#define kCommonScript @"\
+window.SGWebView_postMessage = function (object,method,param) {\
+    var message = {\
+        'object':object,\
+        'method':method,\
+        'param':param\
+    };\
+    window.webkit.messageHandlers."kMessageHandlerName@".postMessage(message);\
 };\
-window.appWebKit = true;\
-window.App.construct = function (objectName,methodName,param) {\
-    var object = {\
-        'objectName':objectName,\
-        'methodName':methodName,\
+window.SGWebView_syncGetValue = function (object,method,param) {\
+    var message = {\
+        'object':object,\
+        'method':method,\
         'parameter':param\
     };\
-    if (window.appWebKit) {\
-        window.webkit.messageHandlers.receiveMethod.postMessage(object);\
-    } else {\
-        window.SGBridge.receiveMethod(object);\
-    }\
-};\
-window.syncGetValue = function (objectName, methodName, param) {\
-    var object = {\
-        'objectName':objectName,\
-        'methodName':methodName,\
-        'parameter':param\
-    };\
-    var str = window.prompt('syncGetValue', JSON.stringify(object));\
+    var str = window.prompt('"kSyncGetValueMethodName@"', JSON.stringify(message));\
     var json = JSON.parse(str);\
-    var date = new Date(json.date);\
-    return json.return;\
+    if (json) {\
+        return json.return;\
+    } else {\
+        return null;\
+    }\
 };\
+"
+
+static NSString *const kDefineObjectScript = @"\
+window.%@ = window.%@ || {};\
 ";
 
 static NSString *const kReturnVoidTemplateScript = @"\
-window.App.%@ = function(%@) {\
-    var param = [\
-        %@\
-    ];\
-    window.App.construct('App','%@',param);\
+window.%@.%@ = function(%@) {\
+    var param = [%@];\
+    window.SGWebView_postMessage('%@','%@',param);\
 };\
 ";
 
 static NSString *const kReturnValueTemplateScript = @"\
-window.App.%@ = function(%@) {\
-    var param = [\
-        %@\
-    ];\
-    return window.syncGetValue('App', '%@', param);\
+window.%@.%@ = function(%@) {\
+    var param = [%@];\
+    return window.SGWebView_syncGetValue('%@', '%@', param);\
 };\
 ";
-
-const char *_protocol_getMethodTypeEncoding(Protocol *, SEL, BOOL isRequiredMethod, BOOL isInstanceMethod);
 
 - (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration {
     self = [super initWithFrame:frame configuration:configuration];
     if (self) {
-        [self addUserScript:kCommonScript name:@"CommonScript"];
-        super.UIDelegate = self;
+        [self addUserScript:kCommonScript];
+        [configuration.userContentController addScriptMessageHandler:(id<WKScriptMessageHandler>)[SGWebViewProxy proxyWithTarget:self] name:kMessageHandlerName];
+        self.UIDelegateProxy = [SGWebViewProxy proxyWithTarget:self UIDelegate:self.superUIDelegate];
+        super.UIDelegate = self.UIDelegateProxy;
     }
     return self;
 }
 
-//- (instancetype)initWithFrame:(CGRect)frame {
-//    self = [super initWithFrame:frame];
-//    if (self) {
-//        [self addUserScript:kCommonScript name:@"CommonScript"];
-//    }
-//    return self;
-//}
+- (void)dealloc {
+    [self.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
+}
 
-- (void)createWithObject:(NSObject *)object {
-    NSMutableString *script = [[NSMutableString alloc] init];
+#pragma mark - Public Method
+- (void)bindJSExportObject:(NSObject *)object name:(NSString *)name {
+    CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
+    
+    NSMutableString *script = [NSMutableString stringWithFormat:kDefineObjectScript, name, name];
     Protocol *exportProtocol = objc_getProtocol("JSExport");
     
     forEachProtocolImplementingProtocol([object class], exportProtocol, ^(Protocol *protocol) {
@@ -108,22 +156,36 @@ const char *_protocol_getMethodTypeEncoding(Protocol *, SEL, BOOL isRequiredMeth
             NSString *selectorName = NSStringFromSelector(sel);
             NSString *methodName = renameDict[selectorName];
             if (methodName == nil) {
-                methodName = selectorToPropertyNameTemp(selectorName);
+                methodName = selectorToPropertyName(sel_getName(sel));
             }
             methodDict[methodName] = invocation;
             
-            [script appendString:[self createScriptWithMethod:methodSignature method:methodName]];
+            [script appendString:[self createScriptWithSignature:methodSignature objectName:name methodName:methodName]];
         });
-        self.selectorDict[@"App"] = methodDict;
+        NSMutableDictionary *allMethodDict = self.selectorDict[name];
+        if (allMethodDict == nil) {
+            allMethodDict = [[NSMutableDictionary alloc] init];
+        }
+        [allMethodDict addEntriesFromDictionary:methodDict];
+        self.selectorDict[name] = allMethodDict;
     });
     
     if (script.length > 0) {
-        [self addUserScript:script name:@"receiveMethod"];
+        [self addUserScript:script];
     }
-    self.object = object;
+    
+    CFAbsoluteTime linkTime = (CFAbsoluteTimeGetCurrent() - startTime);
+    NSLog(@"bindJSExportObject函数 %f ms", linkTime *1000.0);
 }
 
-- (NSString *)createScriptWithMethod:(NSMethodSignature *)methodSignature method:method {
+- (void)addUserScript:(NSString *)source {
+    WKUserScript *script = [[WKUserScript alloc] initWithSource:source injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
+    WKWebViewConfiguration *config = self.configuration;
+    [config.userContentController addUserScript:script];
+}
+
+#pragma mark - Private Method
+- (NSString *)createScriptWithSignature:(NSMethodSignature *)methodSignature objectName:(NSString *)objectName methodName:(NSString *)methodName {
     NSMutableString *args = [NSMutableString string];
     for (int i = 2; i < methodSignature.numberOfArguments; i++) {
         NSString *arg = [NSString stringWithFormat:@"arg%d,", i-2];
@@ -134,37 +196,20 @@ const char *_protocol_getMethodTypeEncoding(Protocol *, SEL, BOOL isRequiredMeth
         [args deleteCharactersInRange:NSMakeRange(args.length-1, 1)];
     }
     
-    NSString *template = @"";
+    NSString *template = nil;
     if (*methodSignature.methodReturnType == _C_VOID) {
         template = kReturnVoidTemplateScript;
     } else {
         template = kReturnValueTemplateScript;
     }
-    
-    NSString *script = [NSString stringWithFormat:template, method, args, args, method];
-    
+    NSString *script = [NSString stringWithFormat:template, objectName, methodName, args, args, objectName, methodName];
     return script;
 }
 
-- (void)addUserScript:(NSString *)source name:(NSString *)name {
-    WKUserScript *script = [[WKUserScript alloc] initWithSource:source injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
-    WKWebViewConfiguration *config = self.configuration;
-    [config.userContentController addUserScript:script];
-    [config.userContentController addScriptMessageHandler:self name:name];
-}
-
-#pragma mark - Private Method
-void forEachProtocolImplementingProtocol(Class cls, Protocol *target, void (^callback)(Protocol *))
-{
-//    ASSERT(cls);
-//    ASSERT(target);
-    
-//    Vector<Protocol *> worklist;
-//    HashSet<void*> visited;
+void forEachProtocolImplementingProtocol(Class cls, Protocol *target, void (^callback)(Protocol *)) {
     NSMutableArray<Protocol *> *worklist = [NSMutableArray array];
     NSMutableSet<Protocol *> *visited = [NSMutableSet set];
 
-    
     // Initially fill the worklist with the Class's protocols.
     unsigned protocolsCount;
     __unsafe_unretained Protocol ** protocols = class_copyProtocolList(cls, &protocolsCount);
@@ -193,8 +238,7 @@ void forEachProtocolImplementingProtocol(Class cls, Protocol *target, void (^cal
     }
 }
 
-bool protocolImplementsProtocol(Protocol *candidate, Protocol *target)
-{
+bool protocolImplementsProtocol(Protocol *candidate, Protocol *target) {
     unsigned protocolProtocolsCount;
     __unsafe_unretained Protocol ** protocolProtocols = protocol_copyProtocolList(candidate, &protocolProtocolsCount);
     for (unsigned i = 0; i < protocolProtocolsCount; ++i) {
@@ -207,8 +251,7 @@ bool protocolImplementsProtocol(Protocol *candidate, Protocol *target)
     return false;
 }
 
-static NSMutableDictionary *createRenameMap(Protocol *protocol, BOOL isInstanceMethod)
-{
+NSMutableDictionary *createRenameMap(Protocol *protocol, BOOL isInstanceMethod) {
     NSMutableDictionary *renameMap = [[NSMutableDictionary alloc] init];
     
     forEachMethodInProtocol(protocol, NO, isInstanceMethod, ^(SEL sel, const char *types){
@@ -226,8 +269,7 @@ static NSMutableDictionary *createRenameMap(Protocol *protocol, BOOL isInstanceM
     return renameMap;
 }
 
-void forEachMethodInProtocol(Protocol *protocol, BOOL isRequiredMethod, BOOL isInstanceMethod, void (^callback)(SEL, const char*))
-{
+void forEachMethodInProtocol(Protocol *protocol, BOOL isRequiredMethod, BOOL isInstanceMethod, void (^callback)(SEL, const char*)) {
     unsigned count;
     struct objc_method_description* methods = protocol_copyMethodDescriptionList(protocol, isRequiredMethod, isInstanceMethod, &count);
     for (unsigned i = 0; i < count; ++i)
@@ -235,8 +277,7 @@ void forEachMethodInProtocol(Protocol *protocol, BOOL isRequiredMethod, BOOL isI
     free(methods);
 }
 
-NSString *selectorToPropertyName(const char* start)
-{
+NSString *selectorToPropertyName(const char* start) {
     NSString *result = nil;
     // Use 'index' to check for colons, if there are none, this is easy!
     const char* firstColon = index(start, ':');
@@ -278,45 +319,113 @@ done:
     return result;
 }
 
-NSString *selectorToPropertyNameTemp(NSString *selector) {
-    NSMutableString *result = [[NSMutableString alloc] init];
-    NSArray *arrry = [selector componentsSeparatedByString:@":"];
-    [result appendString:arrry.firstObject];
-    for (int i = 1; i < arrry.count; i++) {
-        NSString *string = [arrry[i] capitalizedString];
-        [result appendString:string];
+- (id)getReturnFromInvocation:(NSInvocation *)invocation {
+    NSMethodSignature *methodSignature = invocation.methodSignature;
+    NSUInteger length = [methodSignature methodReturnLength];
+    if (length == 0) return nil;
+    
+    char *type = (char *)[methodSignature methodReturnType];
+    while (*type == 'r' || // const
+           *type == 'n' || // in
+           *type == 'N' || // inout
+           *type == 'o' || // out
+           *type == 'O' || // bycopy
+           *type == 'R' || // byref
+           *type == 'V') { // oneway
+        type++; // cutoff useless prefix
     }
-    return result;
+    
+#define return_with_number(_type_) \
+do { \
+_type_ ret; \
+[invocation getReturnValue:&ret]; \
+return @(ret); \
+} while (0)
+    
+    switch (*type) {
+        case 'v': return nil; // void
+        case 'B': return_with_number(bool);
+        case 'c': return_with_number(char);
+        case 'C': return_with_number(unsigned char);
+        case 's': return_with_number(short);
+        case 'S': return_with_number(unsigned short);
+        case 'i': return_with_number(int);
+        case 'I': return_with_number(unsigned int);
+        case 'l': return_with_number(int);
+        case 'L': return_with_number(unsigned int);
+        case 'q': return_with_number(long long);
+        case 'Q': return_with_number(unsigned long long);
+        case 'f': return_with_number(float);
+        case 'd': return_with_number(double);
+        case '*': return_with_number(const char *);
+        case 'D': { // long double
+            long double ret;
+            [invocation getReturnValue:&ret];
+            return [NSNumber numberWithDouble:ret];
+        };
+            
+        case '@': { // id
+            __autoreleasing id ret = nil;
+            [invocation getReturnValue:&ret];
+            return ret;
+        };
+            
+        case '#': { // Class
+            __autoreleasing Class ret = nil;
+            [invocation getReturnValue:&ret];
+            return ret;
+        };
+            
+        default: { // struct / union / SEL / void* / unknown
+            const char *objCType = [methodSignature methodReturnType];
+            char *buf = calloc(1, length);
+            if (!buf) return nil;
+            [invocation getReturnValue:buf];
+            __autoreleasing NSValue *value = [NSValue valueWithBytes:buf objCType:objCType];
+            free(buf);
+            return value;
+        };
+    }
+#undef return_with_number
+}
+
+#pragma mark - Override Method
+- (id<WKUIDelegate>)UIDelegate {
+    return self.superUIDelegate;
+}
+
+- (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate {
+    self.superUIDelegate = UIDelegate;
+    self.UIDelegateProxy = [SGWebViewProxy proxyWithTarget:self UIDelegate:self.superUIDelegate];
+    super.UIDelegate = self.UIDelegateProxy;
 }
 
 #pragma mark - WKScriptMessageHandler
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
-    NSString *method = message.body[@"methodName"];
-    NSArray *params = message.body[@"parameter"];
-    NSInvocation *invocation = self.selectorDict[@"App"][method];
+    NSString *object = message.body[@"object"];
+    NSString *method = message.body[@"method"];
+    NSArray *params = message.body[@"param"];
+    NSInvocation *invocation = self.selectorDict[object][method];
     [params enumerateObjectsUsingBlock:^(id  _Nonnull arg, NSUInteger idx, BOOL * _Nonnull stop) {
         [invocation setArgument:&arg atIndex:idx+2];
     }];
     [invocation invoke];
-    
-//    if ([method isEqualToString:@"SendMessage"]) {
-//        NSString *name = dict[@"name"];
-//        NSString *content = dict[@"content"];
-//        NSString *callback = dict[@"callback"];
-//        [self newsDetailSendMessageWithName:name content:content callBack:callback];
-//    } else if ([method isEqualToString:@"getData"]) {
-//        NSString *key = dict[@"key"];
-//        [self newsContentForKey:key];
-//    }
 }
 
 #pragma mark - WKUIDelegate
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable))completionHandler {
+    if (![prompt isEqualToString:kSyncGetValueMethodName] &&
+        [self.superUIDelegate respondsToSelector:_cmd]) {
+        [self.superUIDelegate webView:webView runJavaScriptTextInputPanelWithPrompt:prompt defaultText:defaultText initiatedByFrame:frame completionHandler:completionHandler];
+        return;
+    }
+    
     NSData *data = [defaultText dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
-    NSString *method = dict[@"methodName"];
-    NSArray *params = dict[@"parameter"];
-    NSInvocation *invocation = self.selectorDict[@"App"][method];
+    NSString *object = dict[@"object"];
+    NSString *method = dict[@"method"];
+    NSArray *params = dict[@"param"];
+    NSInvocation *invocation = self.selectorDict[object][method];
     [params enumerateObjectsUsingBlock:^(id  _Nonnull arg, NSUInteger idx, BOOL * _Nonnull stop) {
         [invocation setArgument:&arg atIndex:idx+2];
     }];
@@ -324,29 +433,20 @@ NSString *selectorToPropertyNameTemp(NSString *selector) {
     
     NSString *returnJson = nil;
     NSMutableDictionary *returnDict = [NSMutableDictionary dictionary];
-    const char *returnType = invocation.methodSignature.methodReturnType;
-    if (*returnType == _C_ID) {
-        id returnValue = nil;
-        [invocation getReturnValue:&returnValue];
-        returnDict[@"return"] = returnValue;
+    returnDict[@"return"] = [self getReturnFromInvocation:invocation];
+    
+//    NSDate *date = [NSDate date];
+//    returnDict[@"date1"] = date.description;
+//    JSContext *context = [[JSContext alloc] init];
+//    JSValue *value = [JSValue valueWithObject:date inContext:context];
+//    returnDict[@"date2"] = [value toString];
+//    returnJson = @"{\"date\":\"2018-12-09T17:40:00Z\"}";
+    
+    if ([NSJSONSerialization isValidJSONObject:returnDict]) {
+        NSError *error;
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:returnDict options:0 error:&error];
+        returnJson = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     }
-    
-    returnDict[@"dict"] = @{@"number":@(123), @"bool":@(YES), @"string":@"text"};
-    
-    NSDate *date = [NSDate date];
-    returnDict[@"date"] = date.description;
-    returnDict[@"number"] = @(YES);
-    
-    JSContext *context = [[JSContext alloc] init];
-    JSValue *value = [JSValue valueWithObject:date inContext:context];
-    NSArray *array = [NSArray arrayWithObjects:@(1), @"2", @(3.14), @(NO), nil];
-    returnDict[@"date"] = [value toString];
-    returnDict[@"array"] = array;
-    //returnJson = @"{\"date\":\"2018-12-09T17:40:00Z\"}";
-    
-    NSError *error;
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:returnDict options:0 error:&error];
-    returnJson = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     completionHandler(returnJson);
 }
 

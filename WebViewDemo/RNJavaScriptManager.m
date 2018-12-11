@@ -53,14 +53,22 @@ JSExportAs(ykShare,
 // 1.9.6及以后版本
 - (void)showToast:(NSString *)text;
 
-- (void)testBlock:(void (^)(void))block;
-- (void)testCStr:(const char *)text;
-- (void)testClass:(Class)class;
-- (void)testNumber:(NSNumber *)number;
-- (void)testArray:(NSArray *)array;
-- (void)testDict:(NSDictionary *)dict;
-- (void)testDate:(NSDate *)date;
-- (void)testParam1:(NSString *)param1 param2:(NSString *)param2;
+//- (void)testBlock:(void (^)(void))block;
+//- (void)testCStr:(const char *)text;
+//- (void)testClass:(Class)class;
+//- (void)testNumber:(NSNumber *)number;
+//- (void)testArray:(NSArray *)array;
+//- (void)testDict:(NSDictionary *)dict;
+//- (void)testDate:(NSDate *)date;
+//- (void)testParam1:(NSString *)param1 param2:(NSString *)param2;
+
+- (NSString *)returnString;
+- (NSArray *)returnArray;
+- (NSDictionary *)returnDictionary;
+- (NSInteger)returnInteger;
+- (long double)returnDouble;
+- (char *)returnCStr;
+- (void (^)(void))returnBlock;
 
 @end
 
@@ -266,6 +274,36 @@ JSExportAs(ykShare,
 //    dispatch_async(dispatch_get_main_queue(), ^{
 //        [[UIApplication sharedApplication].keyWindow showHUDOnlyTextWithMessage:text];
 //    });
+}
+
+- (NSString *)returnString {
+    return @"testString";
+}
+- (NSArray *)returnArray {
+    return @[@"string", @(3.14), @(10), @(YES)];
+}
+
+- (NSDictionary *)returnDictionary {
+    return @{@"number":@(123), @"bool":@(YES), @"string":@"text"};
+}
+
+- (NSInteger)returnInteger {
+    return 2018;
+}
+
+- (long double)returnDouble {
+    return 3.14;
+}
+
+- (char *)returnCStr {
+    return "testCString";
+}
+
+- (void (^)(void))returnBlock {
+    void (^block)(void) = ^{
+        
+    };
+    return block;
 }
 
 @end

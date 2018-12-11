@@ -11,7 +11,7 @@
 #import "SGWebView.h"
 #import "RNJavaScriptManager.h"
 
-@interface WKWebViewController ()
+@interface WKWebViewController () <WKUIDelegate>
 
 @property (nonatomic, strong) SGWebView *webView;
 @property (nonatomic, strong) RNJavaScriptManager *manager;
@@ -20,20 +20,12 @@
 
 @implementation WKWebViewController
 
+- (void)dealloc {
+    
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
-//    Protocol *protocol = objc_getProtocol("SG_JSExport");
-//    unsigned count;
-//    struct objc_method_description* methods = protocol_copyMethodDescriptionList(protocol, NO, YES, &count);
-//    for (unsigned i = 0; i < count; ++i) {
-//        SEL sel = methods[i].name;
-//        char *types = methods[i].types;
-//        //callback(methods[i].name, methods[i].types);
-//        NSLog(@"sel = %@, %s", sel, types);
-//    }
-//
-//    free(methods);
     
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
     config.preferences = [[WKPreferences alloc] init];
@@ -43,7 +35,8 @@
     self.webView = [[SGWebView alloc] initWithFrame:self.view.bounds
                                       configuration:config];
     self.manager = [[RNJavaScriptManager alloc] init];
-    [self.webView createWithObject:self.manager];
+    [self.webView bindJSExportObject:self.manager name:@"App"];
+    self.webView.UIDelegate = self;
     [self.view addSubview:self.webView];
     [self.webView loadRequest:[NSURLRequest requestWithURL:self.url]];
 }
@@ -59,6 +52,19 @@
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
+}
+
+#pragma mark - WKUIDelegate
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler {
+    
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:nil message:message delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil, nil];
+    [alert show];
+    
+    completionHandler();
+}
+
+- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable result))completionHandler {
+    completionHandler(nil);
 }
 
 @end

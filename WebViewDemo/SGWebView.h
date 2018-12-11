@@ -2,7 +2,7 @@
 //  SGWebView.h
 //  SGWebView
 //
-//  Created by Johnny on 2018/12/6.
+//  Created by liuhuan on 2018/12/6.
 //  Copyright © 2018年 Sogou. All rights reserved.
 //
 
@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SGWebView : WKWebView
 
-- (void)createWithObject:(NSObject *)object;
+- (void)bindJSExportObject:(NSObject *)object name:(NSString *)name;
 
 @end
 
