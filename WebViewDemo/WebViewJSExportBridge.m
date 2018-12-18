@@ -1,86 +1,21 @@
 //
-//  SGWebView.m
-//  SGWebView
+//  WebViewJSExportBridge.m
+//  WebViewJSExportBridge
 //
 //  Created by liuhuan on 2018/12/6.
 //  Copyright © 2018年 Sogou. All rights reserved.
 //
 
-#import "SGWebView.h"
-#import "RNJavaScriptManager.h"
+#import "WebViewJSExportBridge.h"
+#import "WebViewJSExportBridgeProxy.h"
+#import "WKWebView+JSExport.h"
 #import <objc/runtime.h>
 
-#pragma mark - SGWebViewProxy
-@interface SGWebViewProxy : NSObject <WKUIDelegate>
-
-+ (instancetype)proxyWithTarget:(SGWebView *)target;
-+ (instancetype)proxyWithTarget:(SGWebView *)target UIDelegate:(id<WKUIDelegate>)UIDelegate;
-
-@property (nonatomic, weak, readonly) id target;
-@property (nonatomic, weak, readonly) id<WKUIDelegate> UIDelegate;
-
-@end
-
-@implementation SGWebViewProxy
-
-- (instancetype)initWithTarget:(SGWebView *)target UIDelegate:(id<WKUIDelegate>)UIDelegate {
-    _target = target;
-    _UIDelegate = UIDelegate;
-    return self;
-}
-
-+ (instancetype)proxyWithTarget:(id)target {
-    return [self proxyWithTarget:target UIDelegate:nil];
-}
-
-+ (instancetype)proxyWithTarget:(id)target UIDelegate:(id<WKUIDelegate>)UIDelegate {
-    return [[SGWebViewProxy alloc] initWithTarget:target UIDelegate:UIDelegate];
-}
-
-- (BOOL)respondsToSelector:(SEL)aSelector {
-    BOOL responds = [_target respondsToSelector:aSelector];
-    if (!responds) {
-        responds = [_UIDelegate respondsToSelector:aSelector];
-    }
-    return responds;
-}
-
-- (id)forwardingTargetForSelector:(SEL)selector {
-    if ([_target respondsToSelector:selector]) {
-        return _target;
-    } else if ([_UIDelegate respondsToSelector:selector]) {
-        return _UIDelegate;
-    }
-    return self;
-}
-
-- (void)forwardInvocation:(NSInvocation *)invocation {
-    void *null = NULL;
-    [invocation setReturnValue:&null];
-}
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
-    return [NSObject instanceMethodSignatureForSelector:@selector(init)];
-}
-
-@end
-
-#pragma mark - SGWebView
-@interface SGWebView () <WKScriptMessageHandler, WKUIDelegate>
-
-@property (nonatomic, strong) NSMutableDictionary *selectorDict;
-@property (nonatomic, strong) SGWebViewProxy *UIDelegateProxy;
-@property (nonatomic, weak) id<WKUIDelegate> superUIDelegate;
-
-@end
-
-@implementation SGWebView
-
-#define kMessageHandlerName @"SGWebView_messageHandler"
-#define kSyncGetValueMethodName @"SGWebView_syncGetValue"
+#define kMessageHandlerName @"WVJSEB_messageHandler"
+#define kSyncGetValueMethodName @"WVJSEB_syncGetValue"
 
 #define kCommonScript @"\
-window.SGWebView_postMessage = function (object,method,param) {\
+window.WVJSEB_postMessage = function (object,method,param) {\
     var message = {\
         'object':object,\
         'method':method,\
@@ -88,7 +23,7 @@ window.SGWebView_postMessage = function (object,method,param) {\
     };\
     window.webkit.messageHandlers."kMessageHandlerName@".postMessage(message);\
 };\
-window.SGWebView_syncGetValue = function (object,method,param) {\
+window.WVJSEB_syncGetValue = function (object,method,param) {\
     var message = {\
         'object':object,\
         'method':method,\
@@ -111,35 +46,59 @@ window.%@ = window.%@ || {};\
 static NSString *const kReturnVoidTemplateScript = @"\
 window.%@.%@ = function(%@) {\
     var param = [%@];\
-    window.SGWebView_postMessage('%@','%@',param);\
+    window.WVJSEB_postMessage('%@','%@',param);\
 };\
 ";
 
 static NSString *const kReturnValueTemplateScript = @"\
 window.%@.%@ = function(%@) {\
     var param = [%@];\
-    return window.SGWebView_syncGetValue('%@', '%@', param);\
+    return window.WVJSEB_syncGetValue('%@', '%@', param);\
 };\
 ";
 
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration {
-    self = [super initWithFrame:frame configuration:configuration];
+static WebViewJSExportBridge *bridge = nil;
+
+#pragma mark - WebViewJSExportBridge
+@interface WebViewJSExportBridge () <WKScriptMessageHandler, WKUIDelegate>
+
+@property (nonatomic, strong) NSMutableDictionary *selectorDict;
+@property (nonatomic, weak) WebViewType webView;
+
+@end
+
+@implementation WebViewJSExportBridge
+
++ (instancetype)bridgeWithWebView:(WebViewType)webView {
+    return [[self alloc] initWithWebView:webView];
+}
+
+- (instancetype)initWithWebView:(WebViewType)webView {
+    self = [super init];
     if (self) {
-        [self addUserScript:kCommonScript];
-        [configuration.userContentController addScriptMessageHandler:(id<WKScriptMessageHandler>)[SGWebViewProxy proxyWithTarget:self] name:kMessageHandlerName];
-        self.UIDelegateProxy = [SGWebViewProxy proxyWithTarget:self UIDelegate:self.superUIDelegate];
-        super.UIDelegate = self.UIDelegateProxy;
+        _webView = webView;
+        if ([webView isKindOfClass:[WKWebView class]]) {
+            
+        }
     }
     return self;
 }
 
 - (void)dealloc {
-    [self.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
+    if ([self.webView isKindOfClass:[WKWebView class]]) {
+        WKWebView *wkWebView = self.webView;
+        [wkWebView.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
+        [wkWebView.configuration.userContentController removeAllUserScripts];
+    }
 }
 
 #pragma mark - Public Method
-- (void)bindJSExportObject:(NSObject *)object name:(NSString *)name {
+- (void)bindJSExportObject:(NSString *)name object:(NSObject<JSExport> *)object {
     CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
+    
+    if (self.selectorDict.count == 0) {
+        [self addWKWebViewMessageHandler];
+    }
     
     NSMutableString *script = [NSMutableString stringWithFormat:kDefineObjectScript, name, name];
     Protocol *exportProtocol = objc_getProtocol("JSExport");
@@ -178,10 +137,31 @@ window.%@.%@ = function(%@) {\
     NSLog(@"bindJSExportObject函数 %f ms", linkTime *1000.0);
 }
 
+- (void)removeJSExportObject:(NSString *)name {
+    [self.selectorDict removeObjectForKey:name];
+    if (self.selectorDict.count == 0) {
+        [self removeAllJSExportObject];
+    }
+}
+
+- (void)removeAllJSExportObject {
+    if ([self.webView isKindOfClass:[WKWebView class]]) {
+        WKWebView *wkWebView = self.webView;
+        [wkWebView.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
+        [wkWebView.configuration.userContentController removeAllUserScripts];
+        [self.selectorDict removeAllObjects];
+    }
+}
+
 - (void)addUserScript:(NSString *)source {
     WKUserScript *script = [[WKUserScript alloc] initWithSource:source injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
-    WKWebViewConfiguration *config = self.configuration;
+    WKWebView *wkWebView = self.webView;
+    WKWebViewConfiguration *config = wkWebView.configuration;
     [config.userContentController addUserScript:script];
+}
+
++ (instancetype)currentBridge {
+    return bridge;
 }
 
 #pragma mark - Private Method
@@ -389,19 +369,17 @@ return @(ret); \
 #undef return_with_number
 }
 
-#pragma mark - Override Method
-- (id<WKUIDelegate>)UIDelegate {
-    return self.superUIDelegate;
-}
-
-- (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate {
-    self.superUIDelegate = UIDelegate;
-    self.UIDelegateProxy = [SGWebViewProxy proxyWithTarget:self UIDelegate:self.superUIDelegate];
-    super.UIDelegate = self.UIDelegateProxy;
+- (void)addWKWebViewMessageHandler {
+    [self addUserScript:kCommonScript];
+    
+    WKWebView *wkWebView = self.webView;
+    wkWebView.JSExportBridge = self;
+    [wkWebView.configuration.userContentController addScriptMessageHandler:(id<WKScriptMessageHandler>)[WebViewJSExportBridgeProxy proxyWithTarget:self] name:kMessageHandlerName];
 }
 
 #pragma mark - WKScriptMessageHandler
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    bridge = self;
     NSString *object = message.body[@"object"];
     NSString *method = message.body[@"method"];
     NSArray *params = message.body[@"param"];
@@ -410,16 +388,18 @@ return @(ret); \
         [invocation setArgument:&arg atIndex:idx+2];
     }];
     [invocation invoke];
+    bridge = nil;
 }
 
 #pragma mark - WKUIDelegate
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable))completionHandler {
+    WKWebView *wkWebView = self.webView;
     if (![prompt isEqualToString:kSyncGetValueMethodName] &&
-        [self.superUIDelegate respondsToSelector:_cmd]) {
-        [self.superUIDelegate webView:webView runJavaScriptTextInputPanelWithPrompt:prompt defaultText:defaultText initiatedByFrame:frame completionHandler:completionHandler];
+        [wkWebView.UIDelegate respondsToSelector:_cmd]) {
+        [wkWebView.UIDelegate webView:webView runJavaScriptTextInputPanelWithPrompt:prompt defaultText:defaultText initiatedByFrame:frame completionHandler:completionHandler];
         return;
     }
-    
+    bridge = self;
     NSData *data = [defaultText dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
     NSString *object = dict[@"object"];
@@ -448,6 +428,7 @@ return @(ret); \
         returnJson = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     }
     completionHandler(returnJson);
+    bridge = nil;
 }
 
 #pragma mark - Getter and Setter

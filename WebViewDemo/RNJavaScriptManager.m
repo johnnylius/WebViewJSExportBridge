@@ -7,7 +7,7 @@
 //
 
 #import "RNJavaScriptManager.h"
-#import "SGWebView.h"
+#import "WebViewJSExportBridge.h"
 
 NSString *const WebViewCreateJavaScriptContextNotification  = @"WebViewCreateJavaScriptContextNotification";
 

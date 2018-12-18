@@ -8,12 +8,13 @@
 
 #import "WKWebViewController.h"
 #import <WebKit/WebKit.h>
-#import "SGWebView.h"
+#import "WebViewJSExportBridge.h"
 #import "RNJavaScriptManager.h"
 
 @interface WKWebViewController () <WKUIDelegate>
 
-@property (nonatomic, strong) SGWebView *webView;
+@property (nonatomic, strong) WebViewJSExportBridge *webViewBridge;
+@property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) RNJavaScriptManager *manager;
 
 @end
@@ -21,7 +22,8 @@
 @implementation WKWebViewController
 
 - (void)dealloc {
-    
+    [self.webViewBridge removeJSExportObject:@"App"];
+    [self.webViewBridge removeJSExportObject:@"TestApp"];
 }
 
 - (void)viewDidLoad {
@@ -32,10 +34,12 @@
     config.processPool = [[WKProcessPool alloc] init];
     config.userContentController = [[WKUserContentController alloc] init];
     
-    self.webView = [[SGWebView alloc] initWithFrame:self.view.bounds
+    self.webView = [[WKWebView alloc] initWithFrame:self.view.bounds
                                       configuration:config];
     self.manager = [[RNJavaScriptManager alloc] init];
-    [self.webView bindJSExportObject:self.manager name:@"App"];
+    self.webViewBridge = [[WebViewJSExportBridge alloc] initWithWebView:self.webView];
+    [self.webViewBridge bindJSExportObject:@"App" object:self.manager];
+    [self.webViewBridge bindJSExportObject:@"TestApp" object:self.manager];
     self.webView.UIDelegate = self;
     [self.view addSubview:self.webView];
     [self.webView loadRequest:[NSURLRequest requestWithURL:self.url]];

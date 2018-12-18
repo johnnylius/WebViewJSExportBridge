@@ -19,8 +19,10 @@
 		A1CC80AD1E444C4C00465A52 /* UIWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A1CC80AC1E444C4C00465A52 /* UIWebViewController.m */; };
 		A1CC80B01E444DB900465A52 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1CC80AF1E444DB900465A52 /* JavaScriptCore.framework */; };
 		B23DCEBD1FC7D6AA0035968D /* WKWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B23DCEBC1FC7D6AA0035968D /* WKWebViewController.m */; };
-		B2E22CEA21B8E91000F98434 /* SGWebView.m in Sources */ = {isa = PBXBuildFile; fileRef = B2E22CE921B8E91000F98434 /* SGWebView.m */; };
+		B2E22CEA21B8E91000F98434 /* WebViewJSExportBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = B2E22CE921B8E91000F98434 /* WebViewJSExportBridge.m */; };
 		B2E22CED21B8F35900F98434 /* RNJavaScriptManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B2E22CEB21B8F35900F98434 /* RNJavaScriptManager.m */; };
+		B2F7F9ED21C6B792000A401D /* WKWebView+JSExport.m in Sources */ = {isa = PBXBuildFile; fileRef = B2F7F9EC21C6B791000A401D /* WKWebView+JSExport.m */; };
+		B2F7F9F021C6B97C000A401D /* WebViewJSExportBridgeProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = B2F7F9EF21C6B97C000A401D /* WebViewJSExportBridgeProxy.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,10 +61,14 @@
 		A1CC80AF1E444DB900465A52 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		B23DCEBB1FC7D6AA0035968D /* WKWebViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKWebViewController.h; sourceTree = "<group>"; };
 		B23DCEBC1FC7D6AA0035968D /* WKWebViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WKWebViewController.m; sourceTree = "<group>"; };
-		B2E22CE821B8E91000F98434 /* SGWebView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SGWebView.h; sourceTree = "<group>"; };
-		B2E22CE921B8E91000F98434 /* SGWebView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SGWebView.m; sourceTree = "<group>"; };
+		B2E22CE821B8E91000F98434 /* WebViewJSExportBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebViewJSExportBridge.h; sourceTree = "<group>"; };
+		B2E22CE921B8E91000F98434 /* WebViewJSExportBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WebViewJSExportBridge.m; sourceTree = "<group>"; };
 		B2E22CEB21B8F35900F98434 /* RNJavaScriptManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RNJavaScriptManager.m; sourceTree = "<group>"; };
 		B2E22CEC21B8F35900F98434 /* RNJavaScriptManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RNJavaScriptManager.h; sourceTree = "<group>"; };
+		B2F7F9EB21C6B791000A401D /* WKWebView+JSExport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WKWebView+JSExport.h"; sourceTree = "<group>"; };
+		B2F7F9EC21C6B791000A401D /* WKWebView+JSExport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "WKWebView+JSExport.m"; sourceTree = "<group>"; };
+		B2F7F9EE21C6B97C000A401D /* WebViewJSExportBridgeProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebViewJSExportBridgeProxy.h; sourceTree = "<group>"; };
+		B2F7F9EF21C6B97C000A401D /* WebViewJSExportBridgeProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WebViewJSExportBridgeProxy.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,8 +126,12 @@
 				A1CC80AC1E444C4C00465A52 /* UIWebViewController.m */,
 				B23DCEBB1FC7D6AA0035968D /* WKWebViewController.h */,
 				B23DCEBC1FC7D6AA0035968D /* WKWebViewController.m */,
-				B2E22CE821B8E91000F98434 /* SGWebView.h */,
-				B2E22CE921B8E91000F98434 /* SGWebView.m */,
+				B2E22CE821B8E91000F98434 /* WebViewJSExportBridge.h */,
+				B2E22CE921B8E91000F98434 /* WebViewJSExportBridge.m */,
+				B2F7F9EE21C6B97C000A401D /* WebViewJSExportBridgeProxy.h */,
+				B2F7F9EF21C6B97C000A401D /* WebViewJSExportBridgeProxy.m */,
+				B2F7F9EB21C6B791000A401D /* WKWebView+JSExport.h */,
+				B2F7F9EC21C6B791000A401D /* WKWebView+JSExport.m */,
 				B2E22CEC21B8F35900F98434 /* RNJavaScriptManager.h */,
 				B2E22CEB21B8F35900F98434 /* RNJavaScriptManager.m */,
 				A1CC807A1E444B4200465A52 /* Main.storyboard */,
@@ -211,7 +221,7 @@
 		A1CC80661E444B4200465A52 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0820;
+				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = Sogou;
 				TargetAttributes = {
 					A1CC806D1E444B4200465A52 = {
@@ -270,13 +280,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B2F7F9ED21C6B792000A401D /* WKWebView+JSExport.m in Sources */,
 				A1CC80791E444B4200465A52 /* ViewController.m in Sources */,
 				B2E22CED21B8F35900F98434 /* RNJavaScriptManager.m in Sources */,
-				B2E22CEA21B8E91000F98434 /* SGWebView.m in Sources */,
+				B2E22CEA21B8E91000F98434 /* WebViewJSExportBridge.m in Sources */,
 				A1CC80AD1E444C4C00465A52 /* UIWebViewController.m in Sources */,
 				A1CC80761E444B4200465A52 /* AppDelegate.m in Sources */,
 				B23DCEBD1FC7D6AA0035968D /* WKWebViewController.m in Sources */,
 				A1CC80731E444B4200465A52 /* main.m in Sources */,
+				B2F7F9F021C6B97C000A401D /* WebViewJSExportBridgeProxy.m in Sources */,
 				A1CC80A91E444BC200465A52 /* WebViewDelegateManager.m in Sources */,
 				A1CC80A61E444B9400465A52 /* NSObject+Category.m in Sources */,
 			);
