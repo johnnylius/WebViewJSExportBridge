@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeAllJSExportObject;
 
 + (instancetype)currentBridge;
+- (void)evaluateJavaScript:(NSString *)script completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
 
 @end
 

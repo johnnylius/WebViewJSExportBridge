@@ -164,6 +164,15 @@ static WebViewJSExportBridge *bridge = nil;
     return bridge;
 }
 
+- (void)evaluateJavaScript:(NSString *)script completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
+    if ([self.webView isKindOfClass:[WKWebView class]]) {
+        WKWebView *wkWebView = self.webView;
+        [wkWebView evaluateJavaScript:script completionHandler:completionHandler];
+    } else {
+        completionHandler(nil, nil);
+    }
+}
+
 #pragma mark - Private Method
 - (NSString *)createScriptWithSignature:(NSMethodSignature *)methodSignature objectName:(NSString *)objectName methodName:(NSString *)methodName {
     NSMutableString *args = [NSMutableString string];
