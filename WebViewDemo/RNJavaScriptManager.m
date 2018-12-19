@@ -216,6 +216,15 @@ JSExportAs(ykShare,
 }
 
 - (void)shareWithPlatform:(NSString *)platform type:(NSString *)type content:(NSString *)content callback:(NSString *)callback {
+    
+    if (callback.length != 0) {
+        WebViewJSExportBridge *bridge = [WebViewJSExportBridge currentBridge];
+        NSString *script = [NSString stringWithFormat:@"%@(%d)", callback, 0];
+        [bridge evaluateJavaScript:script completionHandler:^(id obj, NSError *error) {
+            
+        }];
+    }
+    
     if ([self.taskDelegate respondsToSelector:@selector(shareWithPlatform:type:content:callback:)]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.taskDelegate shareWithPlatform:platform type:type content:nil callback:^(BOOL success) {
