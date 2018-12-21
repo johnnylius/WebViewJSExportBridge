@@ -27,7 +27,7 @@ window.WVJSEB_syncGetValue = function (object,method,param) {\
     var message = {\
         'object':object,\
         'method':method,\
-        'parameter':param\
+        'param':param\
     };\
     var str = window.prompt('"kSyncGetValueMethodName@"', JSON.stringify(message));\
     var json = JSON.parse(str);\
