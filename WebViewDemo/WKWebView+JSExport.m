@@ -36,11 +36,11 @@
 }
 
 - (id)JSExportBridge {
-    return objc_getAssociatedObject(self, @selector(JSExportBridge));
+    return self.JSExportBridgeProxy.target;
 }
 
 - (void)setJSExportBridge:(id)JSExportBridge {
-    objc_setAssociatedObject(self, @selector(JSExportBridge), JSExportBridge, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    self.JSExportBridgeProxy = [WebViewJSExportBridgeProxy proxyWithTarget:JSExportBridge UIDelegate:self.UIDelegate];
     self.UIDelegate = self.UIDelegate;
 }
 
