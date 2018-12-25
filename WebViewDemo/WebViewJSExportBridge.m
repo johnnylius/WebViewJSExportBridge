@@ -62,7 +62,8 @@ static WebViewJSExportBridge *bridge = nil;
 #pragma mark - WebViewJSExportBridge
 @interface WebViewJSExportBridge () <WKScriptMessageHandler, WKUIDelegate>
 
-@property (nonatomic, strong) NSMutableDictionary *selectorDict;
+@property (nonatomic, strong) NSMutableDictionary *objectDict;
+@property (nonatomic, strong) NSMutableDictionary *methodDict;
 @property (nonatomic, weak) WebViewType webView;
 
 @end
@@ -85,18 +86,14 @@ static WebViewJSExportBridge *bridge = nil;
 }
 
 - (void)dealloc {
-    if ([self.webView isKindOfClass:[WKWebView class]]) {
-        WKWebView *wkWebView = self.webView;
-        [wkWebView.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
-        [wkWebView.configuration.userContentController removeAllUserScripts];
-    }
+    [self removeAllJSExportObject];
 }
 
 #pragma mark - Public Method
 - (void)bindJSExportObject:(NSString *)name object:(NSObject<JSExport> *)object {
     CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
     
-    if (self.selectorDict.count == 0) {
+    if (self.methodDict.count == 0) {
         [self addWKWebViewMessageHandler];
     }
     
@@ -105,7 +102,16 @@ static WebViewJSExportBridge *bridge = nil;
     
     forEachProtocolImplementingProtocol([object class], exportProtocol, ^(Protocol *protocol) {
         NSMutableDictionary *renameDict = createRenameMap(protocol, YES);
-        NSMutableDictionary *methodDict = [NSMutableDictionary dictionary];
+        NSMapTable *objectTable = self.objectDict[name];
+        if (objectTable == nil) {
+            objectTable = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsCopyIn valueOptions:NSPointerFunctionsWeakMemory];
+            self.objectDict[name] = objectTable;
+        }
+        NSMutableDictionary *methodDict = self.methodDict[name];
+        if (methodDict == nil) {
+            methodDict = [[NSMutableDictionary alloc] init];
+            self.methodDict[name] = methodDict;
+        }
         forEachMethodInProtocol(protocol, YES, YES, ^(SEL sel, const char *types) {
             NSMethodSignature *methodSignature = [[object class] instanceMethodSignatureForSelector:sel];
             NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:methodSignature];
@@ -118,15 +124,10 @@ static WebViewJSExportBridge *bridge = nil;
                 methodName = selectorToPropertyName(sel_getName(sel));
             }
             methodDict[methodName] = invocation;
+            [objectTable setObject:object forKey:methodName];
             
             [script appendString:[self createScriptWithSignature:methodSignature objectName:name methodName:methodName]];
         });
-        NSMutableDictionary *allMethodDict = self.selectorDict[name];
-        if (allMethodDict == nil) {
-            allMethodDict = [[NSMutableDictionary alloc] init];
-        }
-        [allMethodDict addEntriesFromDictionary:methodDict];
-        self.selectorDict[name] = allMethodDict;
     });
     
     if (script.length > 0) {
@@ -138,8 +139,9 @@ static WebViewJSExportBridge *bridge = nil;
 }
 
 - (void)removeJSExportObject:(NSString *)name {
-    [self.selectorDict removeObjectForKey:name];
-    if (self.selectorDict.count == 0) {
+    [self.objectDict removeObjectForKey:name];
+    [self.methodDict removeObjectForKey:name];
+    if (self.methodDict.count == 0) {
         [self removeAllJSExportObject];
     }
 }
@@ -149,7 +151,8 @@ static WebViewJSExportBridge *bridge = nil;
         WKWebView *wkWebView = self.webView;
         [wkWebView.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
         [wkWebView.configuration.userContentController removeAllUserScripts];
-        [self.selectorDict removeAllObjects];
+        [self.objectDict removeAllObjects];
+        [self.methodDict removeAllObjects];
     }
 }
 
@@ -392,7 +395,10 @@ return @(ret); \
     NSString *object = message.body[@"object"];
     NSString *method = message.body[@"method"];
     NSArray *params = message.body[@"param"];
-    NSInvocation *invocation = self.selectorDict[object][method];
+    NSInvocation *invocation = self.methodDict[object][method];
+    NSObject *target = [self.objectDict[object] objectForKey:method];
+    // 因为NSInvocation的target是assign的，如果target被销毁，调用时会崩溃
+    invocation.target = target;
     [params enumerateObjectsUsingBlock:^(id  _Nonnull arg, NSUInteger idx, BOOL * _Nonnull stop) {
         [invocation setArgument:&arg atIndex:idx+2];
     }];
@@ -414,7 +420,10 @@ return @(ret); \
     NSString *object = dict[@"object"];
     NSString *method = dict[@"method"];
     NSArray *params = dict[@"param"];
-    NSInvocation *invocation = self.selectorDict[object][method];
+    NSInvocation *invocation = self.methodDict[object][method];
+    NSObject *target = [self.objectDict[object] objectForKey:method];
+    // 因为NSInvocation的target是assign的，如果target被销毁，调用时会崩溃
+    invocation.target = target;
     [params enumerateObjectsUsingBlock:^(id  _Nonnull arg, NSUInteger idx, BOOL * _Nonnull stop) {
         [invocation setArgument:&arg atIndex:idx+2];
     }];
@@ -423,14 +432,6 @@ return @(ret); \
     NSString *returnJson = nil;
     NSMutableDictionary *returnDict = [NSMutableDictionary dictionary];
     returnDict[@"return"] = [self getReturnFromInvocation:invocation];
-    
-//    NSDate *date = [NSDate date];
-//    returnDict[@"date1"] = date.description;
-//    JSContext *context = [[JSContext alloc] init];
-//    JSValue *value = [JSValue valueWithObject:date inContext:context];
-//    returnDict[@"date2"] = [value toString];
-//    returnJson = @"{\"date\":\"2018-12-09T17:40:00Z\"}";
-    
     if ([NSJSONSerialization isValidJSONObject:returnDict]) {
         NSError *error;
         NSData *jsonData = [NSJSONSerialization dataWithJSONObject:returnDict options:0 error:&error];
@@ -441,11 +442,18 @@ return @(ret); \
 }
 
 #pragma mark - Getter and Setter
-- (NSMutableDictionary *)selectorDict {
-    if (_selectorDict == nil) {
-        _selectorDict = [[NSMutableDictionary alloc] init];
+- (NSMutableDictionary *)methodDict {
+    if (_methodDict == nil) {
+        _methodDict = [[NSMutableDictionary alloc] init];
     }
-    return _selectorDict;
+    return _methodDict;
+}
+
+- (NSMutableDictionary *)objectDict {
+    if (_objectDict == nil) {
+        _objectDict = [[NSMutableDictionary alloc] init];
+    }
+    return _objectDict;
 }
 
 @end
