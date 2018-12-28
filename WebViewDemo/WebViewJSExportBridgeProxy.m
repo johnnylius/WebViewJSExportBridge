@@ -9,11 +9,9 @@
 #import "WebViewJSExportBridgeProxy.h"
 #import <objc/runtime.h>
 
-#pragma mark - WebViewJSExportBridgeProxy
-
 @implementation WebViewJSExportBridgeProxy
 
-- (instancetype)initWithTarget:(WebViewJSExportBridge *)target UIDelegate:(id<WKUIDelegate>)UIDelegate {
+- (instancetype)initWithTarget:(id)target UIDelegate:(id<WKUIDelegate>)UIDelegate {
     _target = target;
     _UIDelegate = UIDelegate;
     return self;
@@ -51,6 +49,46 @@
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
     return [NSObject instanceMethodSignatureForSelector:@selector(init)];
+}
+
+- (BOOL)isEqual:(id)object {
+    return [_target isEqual:object];
+}
+
+- (NSUInteger)hash {
+    return [_target hash];
+}
+
+- (Class)superclass {
+    return [_target superclass];
+}
+
+- (Class)class {
+    return [_target class];
+}
+
+- (BOOL)isKindOfClass:(Class)aClass {
+    return [_target isKindOfClass:aClass];
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass {
+    return [_target isMemberOfClass:aClass];
+}
+
+- (BOOL)conformsToProtocol:(Protocol *)aProtocol {
+    return [_target conformsToProtocol:aProtocol];
+}
+
+- (BOOL)isProxy {
+    return YES;
+}
+
+- (NSString *)description {
+    return [_target description];
+}
+
+- (NSString *)debugDescription {
+    return [_target debugDescription];
 }
 
 @end
