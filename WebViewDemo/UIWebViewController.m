@@ -7,24 +7,33 @@
 //
 
 #import "UIWebViewController.h"
-#import "WebViewDelegateManager.h"
+#import "UIWebViewJSExportBridge.h"
+#import "RNJavaScriptManager.h"
 
 @interface UIWebViewController () <UIWebViewDelegate>
 
-@property (nonatomic,strong) UIWebView *webView;
+@property (nonatomic, strong) UIWebView *webView;
+@property (nonatomic, strong) UIWebViewJSExportBridge *bridge;
+@property (nonatomic, strong) RNJavaScriptManager *manager;
 
 @end
 
 @implementation UIWebViewController
+
+- (void)dealloc {
+    [self.bridge removeJSExportObject:@"App"];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     
     self.webView = [[UIWebView alloc] initWithFrame:self.view.bounds];
     self.webView.delegate = self;
+    self.webView.scalesPageToFit = YES;
     [self.view addSubview:self.webView];
     
-    [WebViewDelegateManager sharedInstance].webDelegate = self;
+    self.manager = [[RNJavaScriptManager alloc] init];
+    [self.bridge bindJSExportObject:@"App" object:(id<JSExport>)self.manager];
     
     NSURLRequest *request = [NSURLRequest requestWithURL:self.url];
     [self.webView loadRequest:request];
@@ -35,8 +44,11 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)webView:(id)webView didCreateJavaScriptContext:(JSContext *)context forFrame:(id)frame {
-    
+- (UIWebViewJSExportBridge *)bridge {
+    if (_bridge == nil) {
+        _bridge = [UIWebViewJSExportBridge bridgeWithWebView:self.webView];
+    }
+    return _bridge;
 }
 
 @end

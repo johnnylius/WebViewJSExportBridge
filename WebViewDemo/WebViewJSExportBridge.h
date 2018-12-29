@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface WebViewJSExportBridge : NSObject
 
 + (instancetype)bridgeWithWebView:(WebViewType)webView;
-- (void)bindJSExportObject:(NSString *)name object:(NSObject<JSExport> *)object;
+- (void)bindJSExportObject:(NSString *)name object:(id<JSExport>)object;
 - (void)removeJSExportObject:(NSString *)name;
 - (void)removeAllJSExportObject;
 

@@ -72,14 +72,6 @@ JSExportAs(ykShare,
 
 @end
 
-@implementation NSObject (UIWebView)
--(void)webView:(id)webView didCreateJavaScriptContext:(JSContext *)context forFrame:(id)frame {
-    [[NSNotificationCenter defaultCenter] postNotificationName:WebViewCreateJavaScriptContextNotification object:context];
-}
-
-@end
-
-
 @interface RNJavaScriptManager () <NewsJavaScriptExport, TaskJavaScriptExport>
 
 @property (nonatomic, strong) JSContext *context;
@@ -216,14 +208,15 @@ JSExportAs(ykShare,
 }
 
 - (void)shareWithPlatform:(NSString *)platform type:(NSString *)type content:(NSString *)content callback:(NSString *)callback {
-    
-    if (callback.length != 0) {
         WebViewJSExportBridge *bridge = [WebViewJSExportBridge currentBridge];
-        NSString *script = [NSString stringWithFormat:@"%@(%d)", callback, 0];
-        [bridge evaluateJavaScript:script completionHandler:^(id obj, NSError *error) {
+        NSString *javascript = @"\
+        function getContentCount() { \
+            return 3.14;\
+        } \
+        getContentCount();";
+        [bridge evaluateJavaScript:javascript completionHandler:^(id obj, NSError *error) {
             
         }];
-    }
     
     if ([self.taskDelegate respondsToSelector:@selector(shareWithPlatform:type:content:callback:)]) {
         dispatch_async(dispatch_get_main_queue(), ^{
