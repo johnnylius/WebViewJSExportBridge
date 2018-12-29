@@ -10,6 +10,6 @@
 
 @interface WKWebView (JSExport)
 
-@property (nonatomic, strong) id JSExportBridge;
+@property (nonatomic, weak) id WebViewJSExportBridge;
 
 @end

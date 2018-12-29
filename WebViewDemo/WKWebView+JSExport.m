@@ -7,60 +7,63 @@
 //
 
 #import "WKWebView+JSExport.h"
-#import <objc/runtime.h>
 #import "WebViewJSExportBridgeProxy.h"
+#import <objc/runtime.h>
 
 @interface WKWebView ()
 
-@property (nonatomic, strong) WebViewJSExportBridgeProxy *JSExportBridgeProxy;
+@property (nonatomic, strong) WebViewJSExportBridgeProxy *WebViewJSExportBridgeProxy;
 
 @end
 
 @implementation WKWebView (JSExport)
 
 + (void)load {
-    [self swizzleWKWebViewMethodFromSelector:@selector(setUIDelegate:) toSelector:@selector(js_setUIDelegate:)];
-    [self swizzleWKWebViewMethodFromSelector:@selector(UIDelegate) toSelector: @selector(js_UIDelegate)];
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [self swizzleMethodFromSelector:@selector(setUIDelegate:) toSelector:@selector(js_setUIDelegate:)];
+        [self swizzleMethodFromSelector:@selector(UIDelegate) toSelector: @selector(js_UIDelegate)];
+    });
 }
 
-+ (void)swizzleWKWebViewMethodFromSelector:(SEL)oriSelector toSelector:(SEL)swSelector {
++ (void)swizzleMethodFromSelector:(SEL)originalSelector toSelector:(SEL)swizzledSelector {
     Class class = [self class];
-    Method originalMethod = class_getInstanceMethod(class, oriSelector);
-    Method swizzledMethod = class_getInstanceMethod(class, swSelector);
-    BOOL didAddMethod = class_addMethod(class, oriSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
+    Method originalMethod = class_getInstanceMethod(class, originalSelector);
+    Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+    BOOL didAddMethod = class_addMethod(class, originalSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
     if (didAddMethod) {
-        class_replaceMethod(class, swSelector, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod));
+        class_replaceMethod(class, swizzledSelector, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod));
     } else {
         method_exchangeImplementations(originalMethod, swizzledMethod);
     }
 }
 
-- (id)JSExportBridge {
-    return self.JSExportBridgeProxy.target;
+- (id)WebViewJSExportBridge {
+    return self.WebViewJSExportBridgeProxy.target;
 }
 
-- (void)setJSExportBridge:(id)JSExportBridge {
-    self.JSExportBridgeProxy = [WebViewJSExportBridgeProxy proxyWithTarget:JSExportBridge UIDelegate:self.UIDelegate];
+- (void)setWebViewJSExportBridge:(id)WebViewJSExportBridge {
+    self.WebViewJSExportBridgeProxy = [WebViewJSExportBridgeProxy proxyWithTarget:WebViewJSExportBridge UIDelegate:self.UIDelegate];
     self.UIDelegate = self.UIDelegate;
 }
 
-- (WebViewJSExportBridgeProxy *)JSExportBridgeProxy {
-    return objc_getAssociatedObject(self, @selector(JSExportBridgeProxy));
+- (WebViewJSExportBridgeProxy *)WebViewJSExportBridgeProxy {
+    return objc_getAssociatedObject(self, @selector(WebViewJSExportBridgeProxy));
 }
 
-- (void)setJSExportBridgeProxy:(WebViewJSExportBridgeProxy *)JSExportBridgeProxy {
-    objc_setAssociatedObject(self, @selector(JSExportBridgeProxy), JSExportBridgeProxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)setWebViewJSExportBridgeProxy:(WebViewJSExportBridgeProxy *)WebViewJSExportBridgeProxy {
+    objc_setAssociatedObject(self, @selector(WebViewJSExportBridgeProxy), WebViewJSExportBridgeProxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 #pragma mark - Override Method
 - (id<WKUIDelegate>)js_UIDelegate {
-    return self.JSExportBridgeProxy.UIDelegate;
+    return self.WebViewJSExportBridgeProxy.UIDelegate;
 }
 
 - (void)js_setUIDelegate:(id<WKUIDelegate>)UIDelegate {
-    self.JSExportBridgeProxy = [WebViewJSExportBridgeProxy proxyWithTarget:self.JSExportBridge UIDelegate:UIDelegate];
+    self.WebViewJSExportBridgeProxy = [WebViewJSExportBridgeProxy proxyWithTarget:self.WebViewJSExportBridge UIDelegate:UIDelegate];
     
-    [self js_setUIDelegate:self.JSExportBridgeProxy];
+    [self js_setUIDelegate:self.WebViewJSExportBridgeProxy];
 }
 
 

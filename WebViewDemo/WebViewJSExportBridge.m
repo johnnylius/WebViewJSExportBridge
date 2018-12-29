@@ -9,6 +9,7 @@
 #import "WebViewJSExportBridge.h"
 #import "WebViewJSExportBridgeProxy.h"
 #import "WKWebView+JSExport.h"
+#import "UIWebViewJSExportBridge.h"
 #import <objc/runtime.h>
 
 #define kMessageHandlerName @"WVJSEB_messageHandler"
@@ -59,28 +60,20 @@ window.%@.%@ = function(%@) {\
 
 static WebViewJSExportBridge *bridge = nil;
 
-#pragma mark - WebViewJSExportBridge
 @interface WebViewJSExportBridge () <WKScriptMessageHandler, WKUIDelegate>
 
+@property (nonatomic, weak) WKWebView *webView;
 @property (nonatomic, strong) NSMutableDictionary *objectDict;
 @property (nonatomic, strong) NSMutableDictionary *methodDict;
-@property (nonatomic, weak) WebViewType webView;
 
 @end
 
 @implementation WebViewJSExportBridge
 
-+ (instancetype)bridgeWithWebView:(WebViewType)webView {
-    return [[self alloc] initWithWebView:webView];
-}
-
-- (instancetype)initWithWebView:(WebViewType)webView {
+- (instancetype)initWithWebView:(WKWebView *)webView {
     self = [super init];
     if (self) {
         _webView = webView;
-        if ([webView isKindOfClass:[WKWebView class]]) {
-            
-        }
     }
     return self;
 }
@@ -90,9 +83,16 @@ static WebViewJSExportBridge *bridge = nil;
 }
 
 #pragma mark - Public Method
++ (instancetype)bridgeWithWebView:(WebViewType)webView {
+    if ([webView isKindOfClass:[WKWebView class]]) {
+        return [[self alloc] initWithWebView:webView];
+    } else if ([webView isKindOfClass:[UIWebView class]]) {
+        return (WebViewJSExportBridge *)[UIWebViewJSExportBridge bridgeWithWebView:webView];
+    }
+    return nil;
+}
+
 - (void)bindJSExportObject:(NSString *)name object:(NSObject<JSExport> *)object {
-    CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
-    
     if (self.methodDict.count == 0) {
         [self addWKWebViewMessageHandler];
     }
@@ -133,9 +133,6 @@ static WebViewJSExportBridge *bridge = nil;
     if (script.length > 0) {
         [self addUserScript:script];
     }
-    
-    CFAbsoluteTime linkTime = (CFAbsoluteTimeGetCurrent() - startTime);
-    NSLog(@"bindJSExportObject函数 %f ms", linkTime *1000.0);
 }
 
 - (void)removeJSExportObject:(NSString *)name {
@@ -147,33 +144,27 @@ static WebViewJSExportBridge *bridge = nil;
 }
 
 - (void)removeAllJSExportObject {
-    if ([self.webView isKindOfClass:[WKWebView class]]) {
-        WKWebView *wkWebView = self.webView;
-        [wkWebView.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
-        [wkWebView.configuration.userContentController removeAllUserScripts];
-        [self.objectDict removeAllObjects];
-        [self.methodDict removeAllObjects];
-    }
+    [self.webView.configuration.userContentController removeScriptMessageHandlerForName:kMessageHandlerName];
+    [self.webView.configuration.userContentController removeAllUserScripts];
+    [self.objectDict removeAllObjects];
+    [self.methodDict removeAllObjects];
 }
 
 - (void)addUserScript:(NSString *)source {
     WKUserScript *script = [[WKUserScript alloc] initWithSource:source injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
-    WKWebView *wkWebView = self.webView;
-    WKWebViewConfiguration *config = wkWebView.configuration;
-    [config.userContentController addUserScript:script];
+    [self.webView.configuration.userContentController addUserScript:script];
 }
 
 + (instancetype)currentBridge {
-    return bridge;
+    if (bridge != nil) {
+        return bridge;
+    } else {
+        return (WebViewJSExportBridge *)[UIWebViewJSExportBridge currentBridge];
+    }
 }
 
 - (void)evaluateJavaScript:(NSString *)script completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
-    if ([self.webView isKindOfClass:[WKWebView class]]) {
-        WKWebView *wkWebView = self.webView;
-        [wkWebView evaluateJavaScript:script completionHandler:completionHandler];
-    } else {
-        completionHandler(nil, nil);
-    }
+    [self.webView evaluateJavaScript:script completionHandler:completionHandler];
 }
 
 #pragma mark - Private Method
@@ -384,9 +375,8 @@ return @(ret); \
 - (void)addWKWebViewMessageHandler {
     [self addUserScript:kCommonScript];
     
-    WKWebView *wkWebView = self.webView;
-    wkWebView.JSExportBridge = self;
-    [wkWebView.configuration.userContentController addScriptMessageHandler:(id<WKScriptMessageHandler>)[WebViewJSExportBridgeProxy proxyWithTarget:self] name:kMessageHandlerName];
+    self.webView.WebViewJSExportBridge = self;
+    [self.webView.configuration.userContentController addScriptMessageHandler:(id<WKScriptMessageHandler>)[WebViewJSExportBridgeProxy proxyWithTarget:self] name:kMessageHandlerName];
 }
 
 #pragma mark - WKScriptMessageHandler
@@ -408,10 +398,9 @@ return @(ret); \
 
 #pragma mark - WKUIDelegate
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable))completionHandler {
-    WKWebView *wkWebView = self.webView;
     if (![prompt isEqualToString:kSyncGetValueMethodName] &&
-        [wkWebView.UIDelegate respondsToSelector:_cmd]) {
-        [wkWebView.UIDelegate webView:webView runJavaScriptTextInputPanelWithPrompt:prompt defaultText:defaultText initiatedByFrame:frame completionHandler:completionHandler];
+        [self.webView.UIDelegate respondsToSelector:_cmd]) {
+        [self.webView.UIDelegate webView:webView runJavaScriptTextInputPanelWithPrompt:prompt defaultText:defaultText initiatedByFrame:frame completionHandler:completionHandler];
         return;
     }
     bridge = self;
