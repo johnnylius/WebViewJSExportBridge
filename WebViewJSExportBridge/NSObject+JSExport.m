@@ -43,6 +43,13 @@
 
 - (void)js_webView:(id)webView didCreateJavaScriptContext:(JSContext *)context forFrame:(id)frame {
     UIWebViewJSExportBridge *bridge = context.UIWebViewJSExportBridge;
+    NSObject *webViewObject = webView;
+    if (bridge == nil) {
+        bridge = webViewObject.UIWebViewJSExportBridge;
+    } else {
+        webViewObject.UIWebViewJSExportBridge = bridge;
+    }
+    // 真正开始绑定JS对象
     if ([bridge isKindOfClass:[UIWebViewJSExportBridge class]]) {
         [bridge startBindJSExportObject];
     }
