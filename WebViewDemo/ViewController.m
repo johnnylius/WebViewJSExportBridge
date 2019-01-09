@@ -22,7 +22,7 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     
-    self.textField.text = @"http://10.144.232.224/yaokan-js.html";
+    self.textField.text = @"https://macxer.com/jstest.html";
 }
 
 

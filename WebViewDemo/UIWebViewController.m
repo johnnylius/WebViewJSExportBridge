@@ -8,13 +8,13 @@
 
 #import "UIWebViewController.h"
 #import "UIWebViewJSExportBridge.h"
-#import "RNJavaScriptManager.h"
+#import "WebViewJavaScriptManager.h"
 
 @interface UIWebViewController () <UIWebViewDelegate>
 
 @property (nonatomic, strong) UIWebView *webView;
 @property (nonatomic, strong) UIWebViewJSExportBridge *bridge;
-@property (nonatomic, strong) RNJavaScriptManager *manager;
+@property (nonatomic, strong) WebViewJavaScriptManager *manager;
 
 @end
 
@@ -32,7 +32,7 @@
     self.webView.scalesPageToFit = YES;
     [self.view addSubview:self.webView];
     
-    self.manager = [[RNJavaScriptManager alloc] init];
+    self.manager = [[WebViewJavaScriptManager alloc] init];
     [self.bridge bindJSExportObject:@"App" object:(id<JSExport>)self.manager];
     
     NSURLRequest *request = [NSURLRequest requestWithURL:self.url];

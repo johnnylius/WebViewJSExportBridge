@@ -9,13 +9,13 @@
 #import "WKWebViewController.h"
 #import <WebKit/WebKit.h>
 #import "WebViewJSExportBridge.h"
-#import "RNJavaScriptManager.h"
+#import "WebViewJavaScriptManager.h"
 
 @interface WKWebViewController () <WKUIDelegate>
 
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) WebViewJSExportBridge *bridge;
-@property (nonatomic, strong) RNJavaScriptManager *manager;
+@property (nonatomic, strong) WebViewJavaScriptManager *manager;
 
 @end
 
@@ -35,7 +35,7 @@
     
     self.webView = [[WKWebView alloc] initWithFrame:self.view.bounds
                                       configuration:config];
-    self.manager = [[RNJavaScriptManager alloc] init];
+    self.manager = [[WebViewJavaScriptManager alloc] init];
     self.bridge = [WebViewJSExportBridge bridgeWithWebView:self.webView];
     [self.bridge bindJSExportObject:@"App" object:(id<JSExport>)self.manager];
     self.webView.UIDelegate = self;

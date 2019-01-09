@@ -20,7 +20,7 @@
 		B23DCEBD1FC7D6AA0035968D /* WKWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B23DCEBC1FC7D6AA0035968D /* WKWebViewController.m */; };
 		B29440CE21D3EBA6002A1687 /* UIWebViewJSExportBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = B29440CD21D3EBA5002A1687 /* UIWebViewJSExportBridge.m */; };
 		B2E22CEA21B8E91000F98434 /* WebViewJSExportBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = B2E22CE921B8E91000F98434 /* WebViewJSExportBridge.m */; };
-		B2E22CED21B8F35900F98434 /* RNJavaScriptManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B2E22CEB21B8F35900F98434 /* RNJavaScriptManager.m */; };
+		B2E22CED21B8F35900F98434 /* WebViewJavaScriptManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B2E22CEB21B8F35900F98434 /* WebViewJavaScriptManager.m */; };
 		B2F7F9ED21C6B792000A401D /* WKWebView+JSExport.m in Sources */ = {isa = PBXBuildFile; fileRef = B2F7F9EC21C6B791000A401D /* WKWebView+JSExport.m */; };
 		B2F7F9F021C6B97C000A401D /* WebViewJSExportBridgeProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = B2F7F9EF21C6B97C000A401D /* WebViewJSExportBridgeProxy.m */; };
 /* End PBXBuildFile section */
@@ -60,8 +60,8 @@
 		B29440CD21D3EBA5002A1687 /* UIWebViewJSExportBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = UIWebViewJSExportBridge.m; sourceTree = "<group>"; };
 		B2E22CE821B8E91000F98434 /* WebViewJSExportBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebViewJSExportBridge.h; sourceTree = "<group>"; };
 		B2E22CE921B8E91000F98434 /* WebViewJSExportBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WebViewJSExportBridge.m; sourceTree = "<group>"; };
-		B2E22CEB21B8F35900F98434 /* RNJavaScriptManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RNJavaScriptManager.m; sourceTree = "<group>"; };
-		B2E22CEC21B8F35900F98434 /* RNJavaScriptManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RNJavaScriptManager.h; sourceTree = "<group>"; };
+		B2E22CEB21B8F35900F98434 /* WebViewJavaScriptManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WebViewJavaScriptManager.m; sourceTree = "<group>"; };
+		B2E22CEC21B8F35900F98434 /* WebViewJavaScriptManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebViewJavaScriptManager.h; sourceTree = "<group>"; };
 		B2F7F9EB21C6B791000A401D /* WKWebView+JSExport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WKWebView+JSExport.h"; sourceTree = "<group>"; };
 		B2F7F9EC21C6B791000A401D /* WKWebView+JSExport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "WKWebView+JSExport.m"; sourceTree = "<group>"; };
 		B2F7F9EE21C6B97C000A401D /* WebViewJSExportBridgeProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebViewJSExportBridgeProxy.h; sourceTree = "<group>"; };
@@ -117,8 +117,8 @@
 				A1CC80AC1E444C4C00465A52 /* UIWebViewController.m */,
 				B23DCEBB1FC7D6AA0035968D /* WKWebViewController.h */,
 				B23DCEBC1FC7D6AA0035968D /* WKWebViewController.m */,
-				B2E22CEC21B8F35900F98434 /* RNJavaScriptManager.h */,
-				B2E22CEB21B8F35900F98434 /* RNJavaScriptManager.m */,
+				B2E22CEC21B8F35900F98434 /* WebViewJavaScriptManager.h */,
+				B2E22CEB21B8F35900F98434 /* WebViewJavaScriptManager.m */,
 				B26E99B521D8C72C00CDD5FA /* WebViewJSExportBridge */,
 				A1CC80711E444B4200465A52 /* Supporting Files */,
 			);
@@ -275,7 +275,7 @@
 			files = (
 				B2F7F9ED21C6B792000A401D /* WKWebView+JSExport.m in Sources */,
 				A1CC80791E444B4200465A52 /* ViewController.m in Sources */,
-				B2E22CED21B8F35900F98434 /* RNJavaScriptManager.m in Sources */,
+				B2E22CED21B8F35900F98434 /* WebViewJavaScriptManager.m in Sources */,
 				B2E22CEA21B8E91000F98434 /* WebViewJSExportBridge.m in Sources */,
 				A1CC80AD1E444C4C00465A52 /* UIWebViewController.m in Sources */,
 				A1CC80761E444B4200465A52 /* AppDelegate.m in Sources */,
