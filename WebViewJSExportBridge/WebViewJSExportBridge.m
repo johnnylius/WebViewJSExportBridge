@@ -302,6 +302,76 @@ done:
     return result;
 }
 
+- (void)setArgumentFromInvocation:(NSInvocation *)invocation arguments:(NSArray *)arguments {
+    NSMethodSignature *methodSignature = invocation.methodSignature;
+    NSUInteger count = methodSignature.numberOfArguments;
+    [arguments enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx + 2 >= count) {
+            *stop = YES;
+            return;
+        }
+        NSUInteger index = idx + 2;
+        char *type = (char *)[methodSignature getArgumentTypeAtIndex:index];
+        while (*type == 'r' || // const
+               *type == 'n' || // in
+               *type == 'N' || // inout
+               *type == 'o' || // out
+               *type == 'O' || // bycopy
+               *type == 'R' || // byref
+               *type == 'V') { // oneway
+            type++; // cutoff useless prefix
+        }
+        
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *value = [JSValue valueWithObject:obj inContext:context];
+        switch (*type) {
+            case 'v': return; // 1: void
+            case 'B': // 1: bool
+            case 'c': // 1: char / BOOL
+            case 'C': // 1: unsigned char
+            case 's': // 2: short
+            case 'S': // 2: unsigned short
+            case 'i': // 4: int / NSInteger(32bit)
+            case 'I': // 4: unsigned int / NSUInteger(32bit)
+            case 'l': // 4: long(32bit)
+            case 'L': // 4: unsigned long(32bit)
+            { // 'char' and 'short' will be promoted to 'int'.
+                int arg = [value toInt32];
+                //int arg = [obj intValue];
+                [invocation setArgument:&arg atIndex:index];
+            } break;
+            case 'q': // 8: long long / long(64bit) / NSInteger(64bit)
+            case 'Q': // 8: unsigned long long / unsigned long(64bit) / NSUInteger(64bit)
+            {
+                NSNumber *number = [value toNumber];
+                long long arg = [number longLongValue];
+                [invocation setArgument:&arg atIndex:index];
+            } break;
+            case 'f': // 4: float / CGFloat(32bit)
+            { // 'float' will be promoted to 'double'.
+                float arg = [value toDouble];
+                [invocation setArgument:&arg atIndex:index];
+            } break;
+            case 'd': // 8: double / CGFloat(64bit)
+            case 'D': // 16: long double
+            {
+                double arg = [value toDouble];
+                [invocation setArgument:&arg atIndex:index];
+            } break;
+            case '*': // char *
+            {
+                __autoreleasing NSString *string = [value toString];
+                const char *arg = [string UTF8String];
+                [invocation setArgument:&arg atIndex:index];
+            } break;
+            case '@': // id
+            {
+                [invocation setArgument:&obj atIndex:index];
+            } break;
+        }
+    }];
+}
+
 - (id)getReturnFromInvocation:(NSInvocation *)invocation {
     NSMethodSignature *methodSignature = invocation.methodSignature;
     NSUInteger length = [methodSignature methodReturnLength];
@@ -320,9 +390,9 @@ done:
     
 #define return_with_number(_type_) \
 do { \
-_type_ ret; \
-[invocation getReturnValue:&ret]; \
-return @(ret); \
+    _type_ ret; \
+    [invocation getReturnValue:&ret]; \
+    return @(ret); \
 } while (0)
     
     switch (*type) {
@@ -389,9 +459,7 @@ return @(ret); \
     NSObject *target = [self.objectDict[object] objectForKey:method];
     // 因为NSInvocation的target是assign的，如果target被销毁，调用时会崩溃
     invocation.target = target;
-    [params enumerateObjectsUsingBlock:^(id  _Nonnull arg, NSUInteger idx, BOOL * _Nonnull stop) {
-        [invocation setArgument:&arg atIndex:idx+2];
-    }];
+    [self setArgumentFromInvocation:invocation arguments:params];
     [invocation invoke];
     bridge = nil;
 }
@@ -413,9 +481,7 @@ return @(ret); \
     NSObject *target = [self.objectDict[object] objectForKey:method];
     // 因为NSInvocation的target是assign的，如果target被销毁，调用时会崩溃
     invocation.target = target;
-    [params enumerateObjectsUsingBlock:^(id  _Nonnull arg, NSUInteger idx, BOOL * _Nonnull stop) {
-        [invocation setArgument:&arg atIndex:idx+2];
-    }];
+    [self setArgumentFromInvocation:invocation arguments:params];
     [invocation invoke];
     
     NSString *returnJson = nil;
