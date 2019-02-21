@@ -77,7 +77,9 @@
 - (void)evaluateJavaScript:(NSString *)script completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
     JSValue *value = [self.context evaluateScript:script];
     id result = [value toObject];
-    completionHandler(result, nil);
+    if (completionHandler) {
+        completionHandler(result, nil);
+    }
 }
 
 #pragma mark - Private Method
