@@ -1,3 +1,5 @@
 # UIWebViewDemo
-```UIWebView```注入时机
-使用```webView:didCreateJavaScriptContext:forFrame:```方法作为注入时机，比```webViewDidFinishLoad```方法**更准确、时机更早、响应更快**。
+WKWebView JSBridge组件，WKWebView与JS交互像JSExport一样使用。 
+
+1. 通过Runtime动态生成注入的JS接口代码。
+2. 实现WKWebView环境下的同步JS接口。
